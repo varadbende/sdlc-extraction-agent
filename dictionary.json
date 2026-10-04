@@ -44,7 +44,7 @@
     { "key": "halal_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
     { "key": "kosher_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
     { "key": "allergen_status", "group": "Regulatory & Compliance", "data_type": "string" },
-    { "key": "restricted_substance_compliance", "group": "Regulatory & Compliance", "data_type": "string" },
+    { "key": "restricted_substance_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
     { "key": "organic_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
 
     { "key": "supplier_name", "group": "Commercial/Supply Chain", "data_type": "string" },
@@ -122,6 +122,38 @@
       "type": "should_co_occur",
       "attributes": ["heavy_metals_ppm", "residue_on_ignition_percent"],
       "rationale": "These are commonly tested under the same QC protocol for pharma excipients (per USP/EP general chapters). One present without the other suggests an incomplete COA extraction, not necessarily an incomplete COA."
+    },
+    {
+      "id": "QR-5",
+      "type": "should_co_occur",
+      "attributes": ["manufacturing_date", "expiry_date"],
+      "rationale": "Expiry date is normally calculated from manufacturing date plus shelf life. A COA stating one without the other suggests a partial transcription, not that the source document itself is incomplete."
+    },
+    {
+      "id": "QR-6",
+      "type": "conditional_should_not_occur",
+      "condition": { "attribute": "ingredient_type_classification", "value_contains": "Industrial Chemical" },
+      "flagged_attribute": "halal_certification",
+      "rationale": "Halal certification applies to products intended for food, cosmetic, or pharma consumption. Its presence on a product classified as Industrial Chemical suggests either a misclassification or a template value carried over from an unrelated product line."
+    },
+    {
+      "id": "QR-7",
+      "type": "should_co_occur",
+      "attributes": ["cas_number", "ec_number"],
+      "rationale": "Chemicals marketed in the EU are typically registered with both identifiers together under REACH. CAS present without EC (or vice versa) on an EU-bound product suggests incomplete identification data, not necessarily a product that genuinely lacks one."
+    },
+    {
+      "id": "QR-8",
+      "type": "conditional_should_not_occur",
+      "condition": { "attribute": "gmo_status", "value_contains": "Contains GMO" },
+      "flagged_attribute": "organic_certification",
+      "rationale": "Major organic certification standards (e.g., USDA Organic, EU Organic) explicitly prohibit GMO content. organic_certification = true alongside gmo_status = \"Contains GMO\" is a direct logical contradiction, not just a plausibility concern — flagged at higher severity than the other rules."
+    },
+    {
+      "id": "QR-9",
+      "type": "should_co_occur",
+      "attributes": ["coa_batch_number", "traceability_lot_code"],
+      "rationale": "A certificate of analysis is issued against a specific batch/lot. A coa_batch_number present without a traceability_lot_code (or vice versa) suggests the two identifiers weren't reconciled during extraction, worth a human check before treating them as the same batch."
     }
   ]
 }
