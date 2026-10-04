@@ -2,7 +2,10 @@
 REQ-1 / REQ-3: Deterministic post-processing of a raw extraction result.
 No LLM calls here (ADR-0003) — pure code checks against dictionary.json:
   - closed-vocabulary / enum validation (catches e.g. reach_compliance bug)
-  - unit mismatch flagging (catches e.g. viscosity P vs cP bug)
+  - groundedness check for enum fields: the cited source_quote must actually
+    appear in the source document (catches a schema-VALID but fabricated
+    citation, which plain enum validation can't catch on its own)
+  - unit mismatch flagging (catches e.g. viscosity P vs cP)
   - completeness score (critical attributes only, per classified type)
   - the 9 proactive quality rules (co-occurrence checks)
   - routing: what's confident enough for Extracted_Attributes vs what
@@ -15,6 +18,7 @@ from REQ-4/REQ-5 (that's a separate number defined on the golden set, later).
 import json
 
 CONFIDENCE_THRESHOLD = 0.85  # below this, route to Needs_Review regardless of provenance
+MIN_GROUNDED_QUOTE_LEN = 8   # a source_quote shorter than this isn't a real citation
 
 
 def load_dictionary(path="dictionary.json"):
@@ -22,7 +26,21 @@ def load_dictionary(path="dictionary.json"):
         return json.load(f)
 
 
-def validate_and_process(result: dict, dictionary: dict) -> dict:
+def _normalize(text: str) -> str:
+    return " ".join((text or "").lower().split())
+
+
+def _is_grounded(source_quote: str, raw_text: str) -> bool:
+    """True if source_quote is really present (case/whitespace-insensitive)
+    in the document text — i.e. the model is citing something real, not
+    fabricating a plausible-looking quote."""
+    quote = (source_quote or "").strip()
+    if len(quote) < MIN_GROUNDED_QUOTE_LEN:
+        return False
+    return _normalize(quote) in _normalize(raw_text)
+
+
+def validate_and_process(result: dict, dictionary: dict, raw_text: str = None) -> dict:
     """
     Takes the raw LLM extraction result + the dictionary, returns:
     {
@@ -33,6 +51,10 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
         "completeness_score": float,
         "missing_critical_attributes": [...],
     }
+
+    raw_text (optional): the source document's plain text. When supplied,
+    enables the groundedness check on enum fields. Omit only when the raw
+    text genuinely isn't available — the check is skipped, not failed.
     """
     attr_defs = {a["key"]: a for a in dictionary["attributes"]}
     valid_keys = set(attr_defs.keys())
@@ -44,12 +66,8 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
     extracted_attributes = []
     needs_review = []
 
-    # --- Per-attribute deterministic checks ---
     for key, entry in raw_attributes.items():
         if key not in valid_keys:
-            # Closed vocabulary violation (REQ-1) — the agent invented a key.
-            # Does NOT count toward completeness: an invalid key is not a
-            # genuine finding for any real attribute.
             needs_review.append({
                 "key": key,
                 "value": entry.get("value"),
@@ -66,7 +84,6 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
         provenance = entry.get("provenance", "not_found")
 
         if value == "NOT FOUND" or provenance == "not_found":
-            # Legitimately absent — not an error, not routed anywhere.
             continue
 
         row = {
@@ -78,10 +95,7 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
             "confidence": confidence,
         }
 
-        # Check 1: enum validation (catches the reach_compliance bug)
-        # Does NOT count toward completeness: an invalid enum value is not
-        # a genuine, usable finding — it's evidence the extraction failed
-        # for this key, even though a (wrong) value was returned.
+        # Check 1: enum validation (catches the reach_compliance free-text bug)
         if definition["data_type"] == "enum":
             allowed = definition.get("allowed_values", [])
             if value not in allowed:
@@ -92,10 +106,17 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
                 })
                 continue
 
+            # Check 1b: groundedness — catches a schema-VALID but fabricated
+            # citation (e.g. 'Compliant' attached to an unrelated quote).
+            if raw_text is not None and not _is_grounded(row["source_quote"], raw_text):
+                needs_review.append({
+                    **row,
+                    "reason": "GROUNDEDNESS VIOLATION: source_quote was not found verbatim in the source document — value cannot be verified and is treated as unconfirmed",
+                    "counts_as_found": False,
+                })
+                continue
+
         # Check 2: unit mismatch (catches the viscosity P vs cP bug).
-        # DOES count toward completeness: the underlying data was genuinely
-        # found, it just needs unit conversion — a lesser problem than a
-        # missing or invalid value.
         expected_unit = definition.get("unit")
         if expected_unit and unit and unit != expected_unit:
             needs_review.append({
@@ -106,8 +127,6 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
             continue
 
         # Check 3: routing by confidence / provenance.
-        # DOES count toward completeness: a real value was found, it just
-        # needs a human to confirm it before it's fully trusted.
         if provenance == "inferred" or confidence < CONFIDENCE_THRESHOLD:
             needs_review.append({
                 **row,
@@ -175,14 +194,16 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
 if __name__ == "__main__":
     import sys
     from extraction_agent import run_extraction
+    from pdf_reader import extract_text
 
     if len(sys.argv) != 2:
         print("Usage: python validator.py <path_to_pdf>")
         sys.exit(1)
 
     dictionary = load_dictionary()
+    raw_text = extract_text(sys.argv[1])
     raw_result = run_extraction(sys.argv[1])
-    processed = validate_and_process(raw_result, dictionary)
+    processed = validate_and_process(raw_result, dictionary, raw_text=raw_text)
 
     print(f"Classification: {processed['classification']}")
     print(f"Completeness score: {processed['completeness_score']}")

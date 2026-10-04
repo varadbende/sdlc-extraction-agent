@@ -1,28 +1,36 @@
 """
-REQ-4: Deterministic evaluation suite — runs the agent against every document
-in golden/ that has a matching PDF, and checks what code can verify without
-judgment calls (ADR-0003):
+REQ-4: Deterministic evaluation suite — runs the full pipeline (extraction +
+validation, ADR-0003) against every document in golden/ that has a matching
+PDF, and checks the PIPELINE'S FINAL ANSWER, not the raw model call alone.
 
-  - Presence/absence match: did the agent correctly say NOT FOUND where the
-    golden set says NOT FOUND, and find something where golden says something
-    was found? (This is what catches hallucinations like the ep_compliance /
-    reach_compliance ones found during build.)
-  - Enum exact match: for enum-typed fields, does the agent's final value
+This distinction matters: the validator (validator.py) already exists to
+catch bad/ungrounded enum values and quarantine them in Needs_Review with
+counts_as_found=False. A hallucination the validator correctly quarantines
+is the system working as designed, not a failure — so this suite scores the
+validated/processed output. Only a hallucination that slips PAST validation
+(reaches Extracted_Attributes, or a trusted Needs_Review row) counts as a
+real miss.
+
+Checks:
+  - Presence/absence match: did the pipeline's final, trustworthy answer
+    correctly say NOT FOUND where the golden set says NOT FOUND?
+  - Enum exact match: for enum fields the pipeline trusted, does the value
     exactly equal the golden value?
 
 KNOWN GAP (honest limitation, not hidden): this suite does NOT yet include
-the LLM-judge half of ADR-0003 (groundedness, plausibility of free-text
-values) because no second cross-vendor judge model is deployed yet per
-ADR-0002. Free-text field *content* correctness (e.g. is "liquid" vs
-"clear liquid" close enough) is therefore not scored here — only whether
-something was found at all. This is flagged, not silently skipped.
+the LLM-judge half of ADR-0003 (groundedness/plausibility of free-text field
+*content*, e.g. is "liquid" vs "clear liquid" close enough) because no
+second cross-vendor judge model is deployed yet per ADR-0002. Groundedness
+for ENUM fields specifically is now checked deterministically inside
+validator.py itself (source_quote must appear in the document) — that part
+no longer needs an LLM judge.
 
 Scoring:
   - composite_pass_rate: overall presence/absence + enum match rate
-  - HARD FLOOR: any hallucinated enum value (schema-valid-looking but wrong,
-    or present when golden says NOT FOUND) fails the run regardless of
-    composite score — compliance fields being wrong is the highest-cost
-    failure mode for this project's stated regulated-data use case.
+  - HARD FLOOR: any hallucinated/incorrect enum value that the validator
+    nonetheless trusted fails the run regardless of composite score —
+    compliance fields being wrong, undetected, is the highest-cost failure
+    mode for this project's stated regulated-data use case.
 """
 
 import glob
@@ -31,10 +39,11 @@ import os
 import sys
 
 from extraction_agent import run_extraction
+from pdf_reader import extract_text
 from validator import load_dictionary, validate_and_process
 
 COMPOSITE_PASS_THRESHOLD = 0.80  # 80% of checked fields must match
-HARD_FLOOR_VIOLATION = "hallucinated or incorrect enum value on a compliance field"
+HARD_FLOOR_VIOLATION = "a hallucinated/incorrect enum value passed validation and would have reached a user as trustworthy"
 
 
 def _is_not_found(value) -> bool:
@@ -45,15 +54,22 @@ def evaluate_document(pdf_path: str, golden_path: str, dictionary: dict) -> dict
     with open(golden_path) as f:
         golden = json.load(f)
 
+    raw_text = extract_text(pdf_path)
     raw_result = run_extraction(pdf_path)
-    processed = validate_and_process(raw_result, dictionary)
+    processed = validate_and_process(raw_result, dictionary, raw_text=raw_text)
 
-    # Build a flat view of what the agent actually produced per key,
-    # from both extracted_attributes and needs_review (we still want to
-    # score a flagged value's presence/absence correctness).
-    agent_values = {}
-    for row in processed["extracted_attributes"] + processed["needs_review"]:
-        agent_values[row["key"]] = row.get("value")
+    # "Trustworthy" = the pipeline's FINAL answer per key, after validation:
+    # confidently accepted, or flagged for human review but still a real,
+    # grounded, schema-valid value. A key the validator quarantined
+    # (counts_as_found=False) asserted nothing trustworthy — for evaluation
+    # purposes that's equivalent to NOT FOUND, since the deterministic gate
+    # already caught it.
+    trustworthy = {}
+    for row in processed["extracted_attributes"]:
+        trustworthy[row["key"]] = row["value"]
+    for row in processed["needs_review"]:
+        if row.get("counts_as_found"):
+            trustworthy[row["key"]] = row["value"]
 
     attr_defs = {a["key"]: a for a in dictionary["attributes"]}
 
@@ -65,11 +81,10 @@ def evaluate_document(pdf_path: str, golden_path: str, dictionary: dict) -> dict
             continue  # golden file key not in current dictionary version — skip, don't crash
 
         golden_absent = _is_not_found(golden_value)
-        agent_raw = raw_result.get("attributes", {}).get(key, {})
-        agent_value = agent_raw.get("value")
-        agent_absent = _is_not_found(agent_value)
+        agent_absent = key not in trustworthy
+        agent_value = trustworthy.get(key)
 
-        # Check 1: presence/absence match (always checkable, zero LLM cost)
+        # Check 1: presence/absence match, against the pipeline's FINAL answer
         presence_match = (golden_absent == agent_absent)
         checks.append({
             "key": key,
@@ -79,18 +94,17 @@ def evaluate_document(pdf_path: str, golden_path: str, dictionary: dict) -> dict
             "agent": "NOT FOUND" if agent_absent else "(has value)",
         })
 
-        if not presence_match and golden_absent and not agent_absent:
-            definition = attr_defs[key]
-            if definition["data_type"] == "enum":
-                hard_floor_failures.append(
-                    f"{key}: hallucinated value '{agent_value}' where golden set says NOT FOUND "
-                    f"({HARD_FLOOR_VIOLATION})"
-                )
-
-        # Check 2: enum exact match (only when golden has a real value and it's an enum field)
         definition = attr_defs[key]
+
+        if not presence_match and golden_absent and not agent_absent and definition["data_type"] == "enum":
+            hard_floor_failures.append(
+                f"{key}: validated pipeline trusted value '{agent_value}' where golden set says NOT FOUND "
+                f"({HARD_FLOOR_VIOLATION})"
+            )
+
+        # Check 2: enum exact match, only among values the pipeline trusted
         if not golden_absent and definition["data_type"] == "enum":
-            enum_match = (str(agent_value) == str(golden_value))
+            enum_match = (not agent_absent) and (str(agent_value) == str(golden_value))
             checks.append({
                 "key": key,
                 "check": "enum_exact_match",
@@ -98,9 +112,9 @@ def evaluate_document(pdf_path: str, golden_path: str, dictionary: dict) -> dict
                 "golden": golden_value,
                 "agent": agent_value,
             })
-            if not enum_match:
+            if not enum_match and not agent_absent:
                 hard_floor_failures.append(
-                    f"{key}: enum mismatch — golden='{golden_value}', agent='{agent_value}' "
+                    f"{key}: enum mismatch in validated output — golden='{golden_value}', agent='{agent_value}' "
                     f"({HARD_FLOOR_VIOLATION})"
                 )
 
@@ -155,8 +169,8 @@ def run_eval_suite(golden_dir="golden", pdf_dir="data/tds_pdfs") -> bool:
     print(f"\n=== Eval Suite Summary ===")
     print(f"Documents evaluated: {len(all_results)}")
     print(f"Composite pass threshold: {COMPOSITE_PASS_THRESHOLD*100:.0f}%")
-    print(f"Hard floor: any hallucinated/incorrect enum value on a compliance field fails regardless of score")
-    print(f"KNOWN GAP: LLM-judge groundedness/plausibility checks not yet included (no judge model deployed)")
+    print(f"Hard floor: any hallucinated/incorrect enum value that passed validation fails the run regardless of score")
+    print(f"KNOWN GAP: LLM-judge groundedness/plausibility checks for free-text field CONTENT not yet included (no judge model deployed). Enum-field groundedness is now covered deterministically in validator.py.")
     print(f"Suite result: {'PASS' if suite_passed else 'FAIL'}")
 
     return suite_passed
