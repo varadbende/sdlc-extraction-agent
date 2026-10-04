@@ -1,0 +1,127 @@
+{
+  "$schema_version": "1.0",
+  "description": "Governed attribute dictionary for the Document Extraction Agent (Project A). Closed vocabulary — the agent must not use any key not listed here. See docs/adr/ADR-0004 for why this is static reference data, not agent memory.",
+  "groups": [
+    "Identification & Classification",
+    "Physical & Chemical Properties",
+    "Regulatory & Compliance",
+    "Commercial/Supply Chain",
+    "Quality Documentation & Traceability"
+  ],
+  "attributes": [
+    { "key": "product_name", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "cas_number", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "ec_number", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "echa_registration_number", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "inci_name", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "chemical_family", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "synonym_names", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "molecular_formula", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "hs_code", "group": "Identification & Classification", "data_type": "string" },
+    { "key": "ingredient_type_classification", "group": "Identification & Classification", "data_type": "enum", "allowed_values": ["Pharma Excipient/API", "Cosmetic Ingredient", "Food Additive", "Industrial Chemical", "Agrochemical", "Uncertain"] },
+    { "key": "function", "group": "Identification & Classification", "data_type": "string" },
+
+    { "key": "physical_form", "group": "Physical & Chemical Properties", "data_type": "string" },
+    { "key": "color", "group": "Physical & Chemical Properties", "data_type": "string" },
+    { "key": "odor", "group": "Physical & Chemical Properties", "data_type": "string" },
+    { "key": "purity_percent", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "%" },
+    { "key": "molecular_weight", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "g/mol" },
+    { "key": "melting_point_c", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "°C" },
+    { "key": "boiling_point_c", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "°C" },
+    { "key": "ph_value", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "pH" },
+    { "key": "density_g_per_ml", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "g/mL" },
+    { "key": "solubility", "group": "Physical & Chemical Properties", "data_type": "string" },
+    { "key": "viscosity_cp", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "cP" },
+    { "key": "particle_size_um", "group": "Physical & Chemical Properties", "data_type": "numeric", "unit": "µm" },
+
+    { "key": "usp_nf_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
+    { "key": "ep_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
+    { "key": "jp_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
+    { "key": "fda_status", "group": "Regulatory & Compliance", "data_type": "string" },
+    { "key": "reach_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
+    { "key": "rohs_compliance", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["Compliant", "Not Compliant", "Not Applicable"] },
+    { "key": "gmo_status", "group": "Regulatory & Compliance", "data_type": "enum", "allowed_values": ["GMO-Free", "Contains GMO", "Not Applicable"] },
+    { "key": "halal_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
+    { "key": "kosher_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
+    { "key": "allergen_status", "group": "Regulatory & Compliance", "data_type": "string" },
+    { "key": "restricted_substance_compliance", "group": "Regulatory & Compliance", "data_type": "string" },
+    { "key": "organic_certification", "group": "Regulatory & Compliance", "data_type": "boolean" },
+
+    { "key": "supplier_name", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "country_of_origin", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "minimum_order_quantity", "group": "Commercial/Supply Chain", "data_type": "numeric" },
+    { "key": "lead_time_days", "group": "Commercial/Supply Chain", "data_type": "numeric", "unit": "days" },
+    { "key": "packaging_type", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "unit_of_sale", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "incoterms", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "price_basis", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "storage_conditions", "group": "Commercial/Supply Chain", "data_type": "string" },
+    { "key": "shelf_life_months", "group": "Commercial/Supply Chain", "data_type": "numeric", "unit": "months" },
+
+    { "key": "coa_batch_number", "group": "Quality Documentation & Traceability", "data_type": "string" },
+    { "key": "heavy_metals_ppm", "group": "Quality Documentation & Traceability", "data_type": "numeric", "unit": "ppm" },
+    { "key": "residue_on_ignition_percent", "group": "Quality Documentation & Traceability", "data_type": "numeric", "unit": "%" },
+    { "key": "moisture_content_percent", "group": "Quality Documentation & Traceability", "data_type": "numeric", "unit": "%" },
+    { "key": "microbial_limits", "group": "Quality Documentation & Traceability", "data_type": "string" },
+    { "key": "test_method_reference", "group": "Quality Documentation & Traceability", "data_type": "string" },
+    { "key": "manufacturing_date", "group": "Quality Documentation & Traceability", "data_type": "date" },
+    { "key": "expiry_date", "group": "Quality Documentation & Traceability", "data_type": "date" },
+    { "key": "traceability_lot_code", "group": "Quality Documentation & Traceability", "data_type": "string" }
+  ],
+
+  "critical_by_type": {
+    "Pharma Excipient/API": [
+      "cas_number", "ec_number", "echa_registration_number", "chemical_family", "function",
+      "purity_percent", "usp_nf_compliance", "ep_compliance", "heavy_metals_ppm",
+      "residue_on_ignition_percent", "moisture_content_percent", "storage_conditions",
+      "shelf_life_months", "coa_batch_number"
+    ],
+    "Cosmetic Ingredient": [
+      "inci_name", "cas_number", "function", "physical_form", "ph_value",
+      "allergen_status", "organic_certification", "coa_batch_number",
+      "shelf_life_months", "storage_conditions"
+    ],
+    "Food Additive": [
+      "cas_number", "function", "purity_percent", "gmo_status", "halal_certification",
+      "kosher_certification", "allergen_status", "heavy_metals_ppm",
+      "microbial_limits", "expiry_date"
+    ],
+    "Industrial Chemical": [
+      "cas_number", "chemical_family", "physical_form", "density_g_per_ml",
+      "solubility", "reach_compliance", "rohs_compliance", "hs_code", "storage_conditions"
+    ],
+    "Agrochemical": [
+      "cas_number", "function", "purity_percent", "reach_compliance",
+      "restricted_substance_compliance", "country_of_origin", "storage_conditions",
+      "coa_batch_number"
+    ]
+  },
+
+  "quality_rules": [
+    {
+      "id": "QR-1",
+      "type": "should_co_occur",
+      "attributes": ["usp_nf_compliance", "ep_compliance"],
+      "rationale": "Pharma excipients are typically tested against both major pharmacopoeias. One present without the other is a plausible documentation gap, flagged in Quality_Summary, not auto-corrected."
+    },
+    {
+      "id": "QR-2",
+      "type": "conditional_should_not_occur",
+      "condition": { "attribute": "chemical_family", "value_contains": "inorganic pigment" },
+      "flagged_attribute": "gmo_status",
+      "rationale": "GMO status is not a meaningful concept for inorganic pigments. Its presence alongside this chemical_family value signals a likely misclassification or a stale template value carried over from another product."
+    },
+    {
+      "id": "QR-3",
+      "type": "should_co_occur",
+      "attributes": ["halal_certification", "kosher_certification"],
+      "rationale": "Food/cosmetic suppliers commonly pursue both certifications together. One alone isn't necessarily wrong, but is surfaced as a plausibility note worth a human glance."
+    },
+    {
+      "id": "QR-4",
+      "type": "should_co_occur",
+      "attributes": ["heavy_metals_ppm", "residue_on_ignition_percent"],
+      "rationale": "These are commonly tested under the same QC protocol for pharma excipients (per USP/EP general chapters). One present without the other suggests an incomplete COA extraction, not necessarily an incomplete COA."
+    }
+  ]
+}
