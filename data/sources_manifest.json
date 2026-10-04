@@ -1,0 +1,76 @@
+{
+  "description": "Source manifest for the 10 public supplier TDS PDFs used in Project A (REQ-2 stratified sample). Each entry is a genuine, publicly accessible technical data sheet (verified by content before download, not a safety data sheet). Keep this file alongside the PDFs in data/ for traceability/audit purposes.",
+  "documents": [
+    {
+      "filename": "01_epon828_epoxy.pdf",
+      "product_name": "EPON Resin 828",
+      "resin_type": "Epoxy",
+      "supplier": "Westlake Epoxy",
+      "source_url": "https://www.westlakeepoxy.com/sites/default/files/downloads/gfqy40X24W.pdf"
+    },
+    {
+      "filename": "02_ecfibreglass_ec157_epoxy.pdf",
+      "product_name": "EC157 Epoxy Infusion Resin",
+      "resin_type": "Epoxy",
+      "supplier": "EC Fibreglass Supplies",
+      "source_url": "https://www.ecfibreglasssupplies.co.uk/user/TechnicalDataSheet/3207.pdf"
+    },
+    {
+      "filename": "03_westsystem_105_epoxy.pdf",
+      "product_name": "105 Epoxy Resin (with 205/206/207/209 hardeners)",
+      "resin_type": "Epoxy",
+      "supplier": "West System (Gougeon Brothers)",
+      "source_url": "https://www.westsystem.com/app/uploads/2022/09/105_205-207-Combined.pdf"
+    },
+    {
+      "filename": "04_resinlibrary_polyester.pdf",
+      "product_name": "Norsodyne H 13212 TAE (Standard Unsaturated Polyester Resin)",
+      "resin_type": "Unsaturated Polyester",
+      "supplier": "Resin Library",
+      "source_url": "https://www.resinlibrary.com/wp-content/uploads/2020/08/Technical-Data-Sheet-Unsaturated-polyester-resin.pdf"
+    },
+    {
+      "filename": "05_grpuk_p502_polyester.pdf",
+      "product_name": "P-502 Unsaturated Polyester Resin",
+      "resin_type": "Unsaturated Polyester",
+      "supplier": "GRP UK Ltd",
+      "source_url": "https://grpukltd.com/wp-content/uploads/2017/08/P-502-TDS-.pdf"
+    },
+    {
+      "filename": "06_chemdo_pvc_pb1156.pdf",
+      "product_name": "Paste PVC Resin PB1156",
+      "resin_type": "PVC (paste)",
+      "supplier": "Chemdo",
+      "source_url": "https://www.chemdo.com/uploads/PVC-Paste-Resin-TDS-PB1156.pdf"
+    },
+    {
+      "filename": "07_chemdo_pvc_pb1302.pdf",
+      "product_name": "Paste PVC Resin PB1302",
+      "resin_type": "PVC (paste)",
+      "supplier": "Chemdo",
+      "source_url": "https://www.chemdo.com/uploads/PVC-Paste-Resin-TDS-PB1302.pdf"
+    },
+    {
+      "filename": "08_farnell_er2188_epoxy.pdf",
+      "product_name": "ER2188 Epoxy Resin",
+      "resin_type": "Epoxy",
+      "supplier": "Farnell (distributor-hosted datasheet)",
+      "source_url": "https://www.farnell.com/datasheets/1344031.pdf"
+    },
+    {
+      "filename": "09_farnell_e2218_epoxy.pdf",
+      "product_name": "E2218 Epoxy Resin",
+      "resin_type": "Epoxy",
+      "supplier": "Farnell (distributor-hosted datasheet)",
+      "source_url": "https://www.farnell.com/datasheets/810099.pdf"
+    },
+    {
+      "filename": "10_farnell_px700k1_epoxy.pdf",
+      "product_name": "Epoxy Resin PX700K-1",
+      "resin_type": "Epoxy",
+      "supplier": "Farnell (distributor-hosted datasheet)",
+      "source_url": "https://www.farnell.com/datasheets/1558213.pdf"
+    }
+  ],
+  "notes": "An 11th candidate (Parker CoolTherm EP-3500) was dropped: its site returned 403 Forbidden to automated requests even with a browser User-Agent header, consistent with stronger bot protection (e.g. a CDN challenge) rather than a broken link."
+}
