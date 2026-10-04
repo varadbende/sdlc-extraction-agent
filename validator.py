@@ -48,11 +48,14 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
     for key, entry in raw_attributes.items():
         if key not in valid_keys:
             # Closed vocabulary violation (REQ-1) — the agent invented a key.
+            # Does NOT count toward completeness: an invalid key is not a
+            # genuine finding for any real attribute.
             needs_review.append({
                 "key": key,
                 "value": entry.get("value"),
                 "confidence": entry.get("confidence", 0),
                 "reason": "SCHEMA VIOLATION: key not in governed dictionary (closed vocabulary breach)",
+                "counts_as_found": False,
             })
             continue
 
@@ -76,29 +79,40 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
         }
 
         # Check 1: enum validation (catches the reach_compliance bug)
+        # Does NOT count toward completeness: an invalid enum value is not
+        # a genuine, usable finding — it's evidence the extraction failed
+        # for this key, even though a (wrong) value was returned.
         if definition["data_type"] == "enum":
             allowed = definition.get("allowed_values", [])
             if value not in allowed:
                 needs_review.append({
                     **row,
                     "reason": f"SCHEMA VIOLATION: '{value}' is not one of the allowed enum values {allowed}",
+                    "counts_as_found": False,
                 })
                 continue
 
-        # Check 2: unit mismatch (catches the viscosity P vs cP bug)
+        # Check 2: unit mismatch (catches the viscosity P vs cP bug).
+        # DOES count toward completeness: the underlying data was genuinely
+        # found, it just needs unit conversion — a lesser problem than a
+        # missing or invalid value.
         expected_unit = definition.get("unit")
         if expected_unit and unit and unit != expected_unit:
             needs_review.append({
                 **row,
                 "reason": f"UNIT MISMATCH: extracted unit '{unit}' does not match expected unit '{expected_unit}' — needs manual conversion/check",
+                "counts_as_found": True,
             })
             continue
 
-        # Check 3: routing by confidence / provenance
+        # Check 3: routing by confidence / provenance.
+        # DOES count toward completeness: a real value was found, it just
+        # needs a human to confirm it before it's fully trusted.
         if provenance == "inferred" or confidence < CONFIDENCE_THRESHOLD:
             needs_review.append({
                 **row,
                 "reason": f"Low confidence ({confidence}) or inferred (not explicitly stated) value",
+                "counts_as_found": True,
             })
         else:
             extracted_attributes.append(row)
@@ -108,7 +122,7 @@ def validate_and_process(result: dict, dictionary: dict) -> dict:
     found_keys = {
         row["key"] for row in extracted_attributes
     } | {
-        row["key"] for row in needs_review if row.get("value") not in (None, "NOT FOUND")
+        row["key"] for row in needs_review if row.get("counts_as_found")
     }
     found_critical = [k for k in critical_keys if k in found_keys]
     missing_critical = [k for k in critical_keys if k not in found_keys]
