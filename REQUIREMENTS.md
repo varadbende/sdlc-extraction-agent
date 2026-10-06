@@ -103,3 +103,7 @@
 ---
 
 *End of Phase 1 draft. Awaiting approval and the REQ-7 decision before proceeding to Phase 2 — Design.*
+
+## Change Log
+
+- **2026-10-04**: REQ-2's golden set was reduced from the originally planned 5 hand-annotated documents to 2 (both epoxy resin, different suppliers: EPON 828 / Westlake, EC157 / Elantas Camattini), due to time constraints on this portfolio build. Consequence: REQ-4's eval suite is validated within one resin family only, not across the polyester/PVC families originally planned for stratified coverage. This is a scope reduction, not a technical limitation of the approach — the same process would extend to the remaining 3 documents if time allowed.
